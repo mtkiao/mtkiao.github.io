@@ -25,12 +25,17 @@
 <meta property="og:site_name" content="mtkiao&#39;s blog">
 <meta property="og:description" content="前情提要上篇我們分析了KbFilter.exe和KbFilter.sys這兩個文件，並且知道驅動的控制碼作用，接下來我們來研究ITBC是怎麼禁用滑鼠和怎麼跟驅動通訊的 接下來我們先看看是哪個程式禁用我們的滑鼠…根據經驗，在偶然一次機會我結束了MultiClient.exe這個進程然後我就發現，鼠標可以使用了! 那看來鎖鼠標的代碼就藏在裡面了所以我們來看看這個MultiClient.exe的代碼吧">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://example.com/images/ITBCPicture/SetWindowHook.png">
+<meta property="og:image" content="http://example.com/images/ITBCPicture/idaSearchNothing.png">
+<meta property="og:image" content="http://example.com/images/ITBCPicture/idaSetWindowHookXref.png">
+<meta property="og:image" content="http://example.com/images/ITBCPicture/idaSearchKeyboard.png">
 <meta property="article:published_time" content="2024-12-22T04:00:55.000Z">
-<meta property="article:modified_time" content="2024-12-22T06:54:51.336Z">
+<meta property="article:modified_time" content="2024-12-22T07:04:31.277Z">
 <meta property="article:author" content="mtkiao">
 <meta property="article:tag" content="Reverse">
 <meta property="article:tag" content="Kernel">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/ITBCPicture/SetWindowHook.png">
 
   <style>
     :root {
@@ -201,9 +206,9 @@
 <li>BlockInput(TRUE)</li>
 </ol>
 <p>然後我們可以去他的導入表看看他有沒有使用到這些API…</p>
-<p><code>SetWindowHook</code>:<br>![[SetWindowHook.png]]</p>
-<p><code>BlockInput</code>:<br>![[idaSearchNothing.png]]</p>
-<p>看起來只有用到SetWindowHookExW<br>我們進去看看哪裡有調用到這個API<br>![[idaSetWindowHookXref.png]]<br>看起來只有<code>sub_11E27F0</code>調用到這個API，我們進去看看這個函數的代碼</p>
+<p><code>SetWindowHook</code>:<br><img src="/images/ITBCPicture/SetWindowHook.png" alt="SetWindowHook"></p>
+<p><code>BlockInput</code>:<br><img src="/images/ITBCPicture/idaSearchNothing.png" alt="BlockInput"></p>
+<p>看起來只有用到SetWindowHookExW<br>我們進去看看哪裡有調用到這個API<br><img src="/images/ITBCPicture/idaSetWindowHookXref.png" alt="idaSetWindowHookXref"><br>看起來只有<code>sub_11E27F0</code>調用到這個API，我們進去看看這個函數的代碼</p>
 <p><code>sub_11E27F0</code>代碼:</p>
 <pre class="line-numbers language-cpp" data-language="cpp"><code class="language-cpp">BOOL <span class="token function">sub_11E27F0</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
 <span class="token punctuation">&#123;</span>
@@ -258,7 +263,7 @@
 <span class="token punctuation">&#125;</span> MSLLHOOKSTRUCT<span class="token punctuation">,</span> FAR <span class="token operator">*</span>LPMSLLHOOKSTRUCT<span class="token punctuation">,</span> <span class="token operator">*</span>PMSLLHOOKSTRUCT<span class="token punctuation">;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
 
 <p>然後這裡的<code>lParam + 20</code>代表是<code>dwExtraInfo</code>，但不知道是甚麼意思…<br>但應該可以先不用管，這裡的功能大概就是禁止所有鼠標輸入</p>
-<p>既然鼠標禁用已經分析完了，那我們來研究是誰給驅動發送禁用禁用鍵盤的訊息?<br>我們先想一下，既然<code>MultiClient.exe</code>裡面有禁用鼠標的代碼，那會不會還有發送禁用鍵盤的控制碼的代碼呢?<br>我去搜索字串，果然讓我找到了一個關鍵字串<br>![[idaSearchKeyboard.png]]<br>這看起來就是要啟用禁用鍵盤的東西，我優先尋找使用<code>DisableKeyboard</code>的函數，然後就找到了<code>sub_11E26B0</code></p>
+<p>既然鼠標禁用已經分析完了，那我們來研究是誰給驅動發送禁用禁用鍵盤的訊息?<br>我們先想一下，既然<code>MultiClient.exe</code>裡面有禁用鼠標的代碼，那會不會還有發送禁用鍵盤的控制碼的代碼呢?<br>我去搜索字串，果然讓我找到了一個關鍵字串<br><img src="/images/ITBCPicture/idaSearchKeyboard.png" alt="idaSearchKeyboard"><br>這看起來就是要啟用禁用鍵盤的東西，我優先尋找使用<code>DisableKeyboard</code>的函數，然後就找到了<code>sub_11E26B0</code></p>
 <p><code>sub_11E26B0</code>代碼:</p>
 <pre class="line-numbers language-cpp" data-language="cpp"><code class="language-cpp"><span class="token keyword">int</span> <span class="token punctuation">(</span><span class="token operator">*</span>__cdecl <span class="token function">sub_11E26B0</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">(</span><span class="token keyword">void</span><span class="token punctuation">)</span>
 <span class="token punctuation">&#123;</span>
